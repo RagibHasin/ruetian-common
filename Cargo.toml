@@ -1,0 +1,19 @@
+[package]
+name = "ruetian-common"
+version = "0.1.0"
+authors = ["Muhammad Ragib Hasin <ragib.hasin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde_json = '1.0'
+chrono = { version = '0.4', features = ['serde'] }
+serde = { version = '1.0', features = ['derive'] }
+serde_yaml = "0.8"
+duration_utils = { git = 'https://github.com/RagibHasin/duration_utils-rs' }
+num_enum = '0.4'
+strum = "0.17"
+strum_macros = "0.17"
+
+#reqwest = { version = '0.10', features = ['blocking'] }
+[dev-dependencies]
+speculate = "0.1"
