@@ -71,7 +71,7 @@ pub enum Section {
 }
 
 /// Thirty of a RUETian.
-#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq, Default)]
 pub struct Thirty(pub u8);
 
 /// Roll of a RUETian.
@@ -229,13 +229,19 @@ impl ClassInRoutine {
 }
 
 /// Peoples scope for whom classes to be off.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct WhoScope {
     ///
-    section: Option<Section>,
+    pub section: Option<Section>,
     ///
-    thirty: Thirty,
+    pub thirty: Thirty,
+}
+
+impl WhoScope {
+    fn is_default(&self) -> bool {
+        self.section == None && self.thirty == Thirty(0)
+    }
 }
 
 /// Time scope for classes to be off.
@@ -256,6 +262,7 @@ pub enum TimeScope {
 #[serde(rename_all = "camelCase")]
 pub enum Notice {
     /// Notice for an class suspension :D
+    #[serde(rename_all = "camelCase")]
     ClassOff {
         /// The effective date of this notice.
         date: NaiveDate,
@@ -263,6 +270,7 @@ pub enum Notice {
         /// How long the class would be off.
         time: TimeScope,
 
+        #[serde(default, skip_serializing_if = "WhoScope::is_default")]
         /// For whom class would be off.
         for_whom: WhoScope,
 
@@ -270,6 +278,7 @@ pub enum Notice {
         day_off: bool,
     },
     /// Notice for an extra class :|
+    #[serde(rename_all = "camelCase")]
     ExtraClass {
         /// The effective date of this notice.
         date: NaiveDate,
@@ -281,6 +290,7 @@ pub enum Notice {
         for_whom: WhoScope,
     },
     /// Other generic kind of notice.
+    #[serde(rename_all = "camelCase")]
     Others {
         /// The effective date of this notice.
         date: NaiveDate,
@@ -340,7 +350,9 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_yaml as yaml;
     use speculate::speculate;
+    use std::collections::HashMap;
 
     speculate! {
         it "should print a routine" {
