@@ -329,10 +329,10 @@ pub enum Notice {
 }
 
 /// Describes a holiday duration
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
-pub enum HolidayDuration {
+pub enum HolidaySpan {
     /// One single holiday.
     #[serde(rename_all = "camelCase")]
     SingleDay {
@@ -351,6 +351,32 @@ pub enum HolidayDuration {
     },
 }
 
+impl HolidaySpan {
+    /// Get the starting day of this span.
+    pub fn start(self) -> NaiveDate {
+        match self {
+            HolidaySpan::SingleDay { on } => on,
+            HolidaySpan::MultiDays { from, .. } => from,
+        }
+    }
+
+    /// Get the ending day of this span.
+    pub fn end(self) -> NaiveDate {
+        match self {
+            HolidaySpan::SingleDay { on } => on,
+            HolidaySpan::MultiDays { to, .. } => to,
+        }
+    }
+
+    /// Check if this span contains the given date.
+    pub fn contains(self, needle: NaiveDate) -> bool {
+        match self {
+            HolidaySpan::SingleDay { on } => needle == on,
+            HolidaySpan::MultiDays { from, to } => needle >= from && needle <= to,
+        }
+    }
+}
+
 /// Describes an official holiday in RUET.
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -360,7 +386,7 @@ pub struct Holiday {
 
     /// Start date of this holiady.
     #[serde(flatten)]
-    pub duration: HolidayDuration,
+    pub duration: HolidaySpan,
 }
 
 /// Describes a possible date-to-day relation.
@@ -448,7 +474,7 @@ A:
         it "should be a holiday" {
             let holiady = Holiday {
                 r#for: "What!!".to_string(),
-                duration: HolidayDuration::MultiDays {
+                duration: HolidaySpan::MultiDays {
                     from: NaiveDate::from_ymd(2020, 1, 1),
                     to: NaiveDate::from_ymd(2020, 1, 1)
                 }
