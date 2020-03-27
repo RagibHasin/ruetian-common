@@ -386,7 +386,7 @@ pub struct Holiday {
 
     /// Start date of this holiady.
     #[serde(flatten)]
-    pub duration: HolidaySpan,
+    pub span: HolidaySpan,
 }
 
 /// Describes a possible date-to-day relation.
