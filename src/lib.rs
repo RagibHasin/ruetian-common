@@ -228,17 +228,20 @@ impl ClassInRoutine {
     }
 }
 
+/// A class routine.
+pub type ClassRoutine = std::collections::HashMap<Day, Vec<ClassInRoutine>>;
+
 /// Peoples scope for whom classes to be off.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
+#[allow(missing_docs)]
 pub struct WhoScope {
-    ///
     pub section: Option<Section>,
-    ///
     pub thirty: Thirty,
 }
 
 impl WhoScope {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn is_default(&self) -> bool {
         self.section == None && self.thirty == Thirty(0)
     }
@@ -289,6 +292,31 @@ pub enum Notice {
         /// Who should attend the class.
         for_whom: WhoScope,
     },
+    /// Notice for a class test :(
+    #[allow(missing_docs)]
+    #[serde(rename_all = "camelCase")]
+    ClassTest {
+        day: Day,
+        cycle: u8,
+        period: u8,
+        course: String,
+        teacher: String,
+
+        /// Should contain syllabus.
+        extra_info: String,
+    },
+    /// Notice for an exam :`(
+    #[allow(missing_docs)]
+    #[serde(rename_all = "camelCase")]
+    Exam {
+        /// The effective date of this notice.
+        date: NaiveDate,
+
+        course: String,
+
+        /// Should contain syllabus.
+        extra_info: String,
+    },
     /// Other generic kind of notice.
     #[serde(rename_all = "camelCase")]
     Others {
@@ -300,6 +328,29 @@ pub enum Notice {
     },
 }
 
+/// Describes a holiday duration
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+pub enum HolidayDuration {
+    /// One single holiday.
+    #[serde(rename_all = "camelCase")]
+    SingleDay {
+        /// The day, the day.....
+        on: NaiveDate,
+    },
+
+    /// More than one day of vacation.
+    #[serde(rename_all = "camelCase")]
+    MultiDays {
+        /// Start date of this holiady.
+        from: NaiveDate,
+
+        /// End date of this holiady.
+        to: NaiveDate,
+    },
+}
+
 /// Describes an official holiday in RUET.
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -308,10 +359,8 @@ pub struct Holiday {
     pub r#for: String,
 
     /// Start date of this holiady.
-    pub start: NaiveDate,
-
-    /// End date of this holiady.
-    pub end: NaiveDate,
+    #[serde(flatten)]
+    pub duration: HolidayDuration,
 }
 
 /// Describes a possible date-to-day relation.
@@ -352,11 +401,10 @@ mod tests {
     use super::*;
     use serde_yaml as yaml;
     use speculate::speculate;
-    use std::collections::HashMap;
 
     speculate! {
         it "should print a routine" {
-            let routine :HashMap<Day, Vec<ClassInRoutine>> = [
+            let routine: ClassRoutine = [
                 (Day::A, vec![
                     ClassInRoutine {
                         course: "EEE2104".to_owned(),
@@ -390,11 +438,24 @@ A:
             println!("{}", yaml::to_string(&routine).unwrap());
             println!("{}", string);
 
-            println!("{:#?}", yaml::from_str::<HashMap<Day, Vec<ClassInRoutine>>>(string).unwrap());
+            println!("{:#?}", yaml::from_str::<ClassRoutine>(string).unwrap());
 
             //println!("Result : {:#?}", result);
             //Current state of agenda :
             //println!("{}", json::to_string_pretty(&agenda).unwrap());
+        }
+
+        it "should be a holiday" {
+            let holiady = Holiday {
+                r#for: "What!!".to_string(),
+                duration: HolidayDuration::MultiDays {
+                    from: NaiveDate::from_ymd(2020, 1, 1),
+                    to: NaiveDate::from_ymd(2020, 1, 1)
+                }
+            };
+
+            println!("{:#?}", holiady);
+            println!("{}", yaml::to_string(&holiady).unwrap());
         }
     }
 }
