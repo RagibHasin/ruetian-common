@@ -5,12 +5,15 @@
 #![feature(map_first_last)]
 
 use chrono::prelude::*;
+use derive_more::Display;
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::{cmp::*, convert::TryFrom};
 
 /// Department of a RUETian.
-#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq, TryFromPrimitive)]
+#[derive(
+    Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq, TryFromPrimitive, Display,
+)]
 #[repr(u32)]
 #[allow(missing_docs)]
 pub enum Department {
@@ -37,7 +40,7 @@ pub enum Department {
 
 impl Department {
     /// Get official and colloquial name of a course.
-    pub fn get_course_name(self, code: &str) -> Result<(&'static str, &'static str)> {
+    pub fn get_course_name(self, code: &str) -> BoxResult<(&'static str, &'static str)> {
         use Department::*;
         match self {
             EEE => match code {
@@ -53,17 +56,9 @@ impl Department {
     }
 }
 
-impl std::fmt::Display for Department {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // write!(f, "{:?}", self)
-        // or, alternatively:
-        std::fmt::Debug::fmt(self, f)
-    }
-}
-
 /// Section of a RUETian.
 #[allow(missing_docs)]
-#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq, Display)]
 pub enum Section {
     A,
     B,
@@ -406,21 +401,43 @@ pub enum DateDayMapping {
 }
 
 /// The `Error` type for RUETian queries.
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub struct RuetianError {
     msg: String,
 }
 
+/*
 impl std::fmt::Display for RuetianError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.msg)
     }
 }
+*/
 
 impl std::error::Error for RuetianError {}
 
+#[cfg(feature = "reqwest-err")]
+impl From<reqwest::Error> for RuetianError {
+    fn from(err: reqwest::Error) -> RuetianError {
+        RuetianError {
+            msg: format!("reqwest:\n\t{}\n\t\t{:#?}", err, err),
+        }
+    }
+}
+
+impl From<serde_yaml::Error> for RuetianError {
+    fn from(err: serde_yaml::Error) -> RuetianError {
+        RuetianError {
+            msg: format!("yaml:\n\t{}\n\t\t{:#?}", err, err),
+        }
+    }
+}
+
 /// An alias for Result.
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+/// Local Result type.
+pub type Result<T> = std::result::Result<T, RuetianError>;
 
 #[cfg(test)]
 mod tests {
@@ -474,7 +491,7 @@ A:
         it "should be a holiday" {
             let holiady = Holiday {
                 r#for: "What!!".to_string(),
-                duration: HolidaySpan::MultiDays {
+                span: HolidaySpan::MultiDays {
                     from: NaiveDate::from_ymd(2020, 1, 1),
                     to: NaiveDate::from_ymd(2020, 1, 1)
                 }

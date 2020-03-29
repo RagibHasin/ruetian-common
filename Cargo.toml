@@ -13,7 +13,11 @@ duration_utils = { git = 'https://github.com/RagibHasin/duration_utils-rs' }
 num_enum = '0.4'
 strum = "0.17"
 strum_macros = "0.17"
+derive_more = "0.99"
 
-#reqwest = { version = '0.10', features = ['blocking'] }
+reqwest = { version = "0.10", optional = true }
 [dev-dependencies]
 speculate = "0.1"
+
+[features]
+reqwest-err = ["reqwest"]
