@@ -8,7 +8,18 @@ use chrono::prelude::*;
 use derive_more::Display;
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
-use std::{cmp::*, convert::TryFrom};
+use std::{cmp::*, convert::TryFrom, str::FromStr};
+
+#[allow(missing_docs)]
+pub mod errors {
+    error_chain::error_chain! {
+        foreign_links {
+            NumParse(::std::num::ParseIntError);
+        }
+    }
+}
+
+use errors::*;
 
 /// Department of a RUETian.
 #[derive(
@@ -40,18 +51,14 @@ pub enum Department {
 
 impl Department {
     /// Get official and colloquial name of a course.
-    pub fn get_course_name(self, code: &str) -> BoxResult<(&'static str, &'static str)> {
+    pub fn get_course_name(self, code: &str) -> Result<(&'static str, &'static str)> {
         use Department::*;
         match self {
             EEE => match code {
                 "EEE 2100" => Ok(("Electrical Shop Practice", "Electrical Shop")),
-                invalid => Err(Box::new(RuetianError {
-                    msg: format!("No course '{}' available for {}", invalid, self),
-                })),
+                invalid => Err(format!("No course '{}' available for {}", invalid, self).into()),
             },
-            _ => Err(Box::new(RuetianError {
-                msg: format!("No course available for {}", self),
-            })),
+            _ => Err(format!("No course available for {}", self).into()),
         }
     }
 }
@@ -70,11 +77,24 @@ pub enum Section {
 pub struct Thirty(pub u8);
 
 /// Roll of a RUETian.
-#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq)]
-pub struct Roll(pub u32);
+#[derive(Serialize, Deserialize, Debug, Hash, Clone, Copy, Eq, PartialEq, Display)]
+pub struct Roll(u32);
 
 #[allow(dead_code)]
 impl Roll {
+    /// Create a new valid instance of roll.
+    #[inline]
+    pub fn new(roll: u32) -> Result<Roll> {
+        if roll < 10_000_000
+            && Department::try_from((roll / 1000) % 100).is_ok()
+            && roll % 1000 <= 180
+        {
+            Ok(Roll(roll))
+        } else {
+            Err(format!("Invalid roll: {}", roll).into())
+        }
+    }
+
     /// Get department of a RUETian.
     #[inline]
     pub fn department(self) -> Department {
@@ -112,6 +132,15 @@ impl Roll {
             31..=60 | 91..=120 | 151..=180 => Thirty(2),
             other => panic!("Invalid roll in department: {}", other),
         }
+    }
+}
+
+impl FromStr for Roll {
+    type Err = Error;
+
+    fn from_str(roll: &str) -> Result<Self> {
+        let roll: u32 = roll.parse()?;
+        Roll::new(roll)
     }
 }
 
@@ -399,45 +428,6 @@ pub enum DateDayMapping {
     /// An off day.
     OffDay(Notice),
 }
-
-/// The `Error` type for RUETian queries.
-#[derive(Debug, Display)]
-pub struct RuetianError {
-    msg: String,
-}
-
-/*
-impl std::fmt::Display for RuetianError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-*/
-
-impl std::error::Error for RuetianError {}
-
-#[cfg(feature = "reqwest-err")]
-impl From<reqwest::Error> for RuetianError {
-    fn from(err: reqwest::Error) -> RuetianError {
-        RuetianError {
-            msg: format!("reqwest:\n\t{}\n\t\t{:#?}", err, err),
-        }
-    }
-}
-
-impl From<serde_yaml::Error> for RuetianError {
-    fn from(err: serde_yaml::Error) -> RuetianError {
-        RuetianError {
-            msg: format!("yaml:\n\t{}\n\t\t{:#?}", err, err),
-        }
-    }
-}
-
-/// An alias for Result.
-pub type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-/// Local Result type.
-pub type Result<T> = std::result::Result<T, RuetianError>;
 
 #[cfg(test)]
 mod tests {
